@@ -74,6 +74,10 @@ class Post(PublishedModel):
         related_name='posts'
     )
 
+    @property
+    def comment_count(self):
+        return self.comments.count()
+
     class Meta:
         verbose_name = 'публикация'
         verbose_name_plural = 'Публикации'

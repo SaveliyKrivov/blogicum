@@ -1,14 +1,21 @@
 from django.shortcuts import render
+from django.views.generic import TemplateView
 
+class StaticPageView(TemplateView):
+    extra_context = None
 
-def about(request):
-    template = 'pages/about.html'
-    return render(request, template)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.extra_context:
+            context.update(self.extra_context)
+        return context
+    
+class AboutView(StaticPageView):
+    template_name = 'pages/about.html'
 
+class RulesView(StaticPageView):
+    template_name = 'pages/rules.html'
 
-def rules(request):
-    template = 'pages/rules.html'
-    return render(request, template)
 
 def page_not_found(request, exception):
     template = 'pages/404.html'

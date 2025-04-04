@@ -43,7 +43,7 @@ class ProfileDetailView(DetailView):
         return context
 
 
-class ProfileUpdateView(UpdateView, LoginRequiredMixin):
+class ProfileUpdateView(LoginRequiredMixin, UpdateView):
     model = User
     template_name = 'blog/user.html'
     fields = ['username', 'first_name', 'last_name', 'email']
@@ -67,7 +67,7 @@ class CategoryListView(ListView):
         self.category = get_object_or_404(Category, slug=category_slug)
 
         if not self.category.is_published:
-            return Http404()
+            raise Http404()
 
         return self.category.posts.filter(
             is_published=True,
@@ -80,10 +80,14 @@ class CategoryListView(ListView):
         return context
 
 
-class PostCreateView(CreateView, LoginRequiredMixin):
+class PostCreateView(LoginRequiredMixin, CreateView):
     model = Post
     form_class = PostForm
     template_name = 'blog/create.html'
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        return super().form_valid(form)
 
 
 class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
@@ -96,6 +100,9 @@ class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
     def get_object(self):
         return get_object_or_404(Post, id=self.kwargs['post_id'])
+
+    def handle_no_permission(self):
+        return redirect('blog:post_detail', post_id=self.kwargs['post_id'])
 
     def get_success_url(self):
         return reverse('blog:post_detail', kwargs={'post_id': self.object.id})
@@ -147,14 +154,13 @@ def edit_comment(request, post_id, comment_id):
 def delete_comment(request, post_id, comment_id):
     comment = get_object_or_404(Comment, pk=comment_id)
     if comment.author != request.user:
-        redirect("blog:post_detail", post_id=comment.post.id)
-    else:
-        form = CommentForm(instance=comment)
-        context = {'form': form}
-        if request.method == 'POST':
-            comment.delete()
-            return redirect('blog:post_detail', post_id=comment.post.id)
-        return render(request, 'blog/comment.html', context=context)
+        return redirect("blog:post_detail", post_id=comment.post.id)
+
+    context = {'comment': comment}
+    if request.method == 'POST':
+        comment.delete()
+        return redirect('blog:post_detail', post_id=comment.post.id)
+    return render(request, 'blog/comment.html', context=context)
 
 
 def post_detail(request, post_id):
@@ -163,9 +169,12 @@ def post_detail(request, post_id):
         Post.objects.select_related('category'),
         pk=post_id
     )
-    if (not post.is_published
+
+    if post.author != request.user and (
+        not post.is_published
         or not post.category.is_published
-            or post.pub_date > timezone.now()):
+        or post.pub_date > timezone.now()
+    ):
         raise Http404()
 
     context = {
