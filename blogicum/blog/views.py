@@ -7,7 +7,7 @@ from .models import Post, Category, Comment
 from .forms import PostForm, CommentForm
 from django.utils import timezone
 from django.views.generic import CreateView, ListView
-from django.views.generic import  UpdateView, DeleteView, DetailView
+from django.views.generic import UpdateView, DeleteView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import User
 
@@ -53,8 +53,8 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
         return self.request.user
 
     def get_success_url(self):
-        return reverse('blog:profile', kwargs=
-                       {'username': self.request.user.username})
+        return reverse('blog:profile', 
+                       kwargs={'username': self.request.user.username})
 
 
 class CategoryListView(ListView):
